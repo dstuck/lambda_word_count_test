@@ -1,0 +1,7 @@
+.idea
+lib
+zip_links
+rds_config.py
+*.zip
+*.pyc
+venv*
