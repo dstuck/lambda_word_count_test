@@ -1,6 +1,5 @@
 import logging
 from os.path import join
-import sys
 from tempfile import mkdtemp
 
 import boto3
@@ -18,6 +17,7 @@ name = rds_config.db_username
 password = rds_config.db_password
 db_name = rds_config.db_name
 
+logger.info('Attempting to connect to {}@{}'.format(name, rds_host))
 conn = pymysql.connect(rds_host, user=name, passwd=password, db=db_name, connect_timeout=5)
 # try:
 #     conn = pymysql.connect(rds_host, user=name, passwd=password, db=db_name, connect_timeout=5)
@@ -67,7 +67,9 @@ def get_line_iterator_from_file(s3_bucket, s3_key):
     temp_dir = mkdtemp()
     temp_file = join(temp_dir, 'tmp.txt')
     s3 = boto3.resource('s3')
+    logger.info('Downloading {} to {}'.format(s3_key, temp_file))
     s3.Bucket(s3_bucket).download_file(s3_key, temp_file)
+    logger.info('Successfully downloaded')
     with open(temp_file, 'r') as f:
         line_list = f.readlines()
     return line_list
