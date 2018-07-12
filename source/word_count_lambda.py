@@ -49,10 +49,12 @@ def process_file(s3_bucket, s3_key):
     return output
 
 
-def get_word_count_from_file(s3_bucket, s3_key):
+def get_word_count_from_file(s3_bucket, s3_key, log_freq=500000):
     line_iter = get_line_iterator_from_file(s3_bucket, s3_key)
     word_count = 0
-    for line in line_iter:
+    for i, line in enumerate(line_iter):
+        if (i+1) % log_freq == 0:
+            logger.info("Processed {} lines".format(i+1))
         word_count += get_word_count_for_line(line)
     return word_count
 
@@ -64,16 +66,9 @@ def get_word_count_for_line(line):
 
 
 def get_line_iterator_from_file(s3_bucket, s3_key):
-    temp_dir = mkdtemp()
-    temp_file = join(temp_dir, 'tmp.txt')
-    s3 = boto3.resource('s3')
-    logger.info('Downloading {} to {}'.format(s3_key, temp_file))
-    s3.Bucket(s3_bucket).download_file(s3_key, temp_file)
-    logger.info('Successfully downloaded')
-    with open(temp_file, 'r') as f:
-        line_list = f.readlines()
-    return line_list
-
+    s3_client = boto3.client('s3')
+    s3_object = s3_client.get_object(Bucket=s3_bucket, Key=s3_key)
+    return iter_lines(s3_object['Body'])
 
 def output_word_count(word_count, s3_bucket, s3_key):
     s3_url = 's3://{}/{}'.format(s3_bucket, s3_key)
@@ -86,3 +81,42 @@ def output_word_count(word_count, s3_bucket, s3_key):
         conn.commit()
     logger.info(word_count)
     return word_count
+
+
+## Because of stupid old version of boto3, do not have access to StreamingBody.iter_lines
+#  code taken from botocore version 1.10.48
+def iter_chunks(streaming_body, chunk_size=1024):
+    """Return an iterator to yield chunks of chunk_size bytes from the raw
+    stream.
+    """
+    while True:
+        current_chunk = streaming_body.read(chunk_size)
+        if current_chunk == b"":
+            break
+        yield current_chunk
+
+def iter_lines(streaming_body, chunk_size=1024):
+    """Return an iterator to yield lines from the raw stream.
+
+    This is achieved by reading chunk of bytes (of size chunk_size) at a
+    time from the raw stream, and then yielding lines from there.
+    """
+    pending = None
+    for chunk in iter_chunks(streaming_body, chunk_size):
+        if pending is not None:
+            chunk = pending + chunk
+
+        lines = chunk.splitlines()
+
+        if lines and lines[-1] and chunk and lines[-1][-1] == chunk[-1]:
+            # We might be in the 'middle' of a line. Hence we keep the
+            # last line as pending.
+            pending = lines.pop()
+        else:
+            pending = None
+
+        for line in lines:
+            yield line
+
+    if pending is not None:
+        yield pending
