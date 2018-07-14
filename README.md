@@ -6,3 +6,7 @@ jq
 
 Updating lib
 - `pip install -r requirements -t lib`
+
+Updating lambda code
+- `cd aws_scripts`
+- `./update_lambda_code.sh`

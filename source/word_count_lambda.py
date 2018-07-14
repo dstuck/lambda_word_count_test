@@ -68,7 +68,7 @@ def get_word_count_for_line(line):
 def get_line_iterator_from_file(s3_bucket, s3_key):
     s3_client = boto3.client('s3')
     s3_object = s3_client.get_object(Bucket=s3_bucket, Key=s3_key)
-    return iter_lines(s3_object['Body'])
+    return iter_lines(s3_object['Body'], chunk_size=1024*10)
 
 def output_word_count(word_count, s3_bucket, s3_key):
     s3_url = 's3://{}/{}'.format(s3_bucket, s3_key)

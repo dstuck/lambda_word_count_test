@@ -14,6 +14,6 @@ aws lambda update-function-code \
 aws lambda update-function-configuration \
     --function-name $function_name \
     --handler word_count_lambda.lambda_handler \
-    --timeout 60
+    --timeout 300
 popd
 
